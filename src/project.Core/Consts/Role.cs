@@ -9,6 +9,7 @@ namespace project.Core.Consts
     {
          public const string admin = "Admin";
          public const string user = "User";
+         public const string merchant ="Merchant";
 
     }
 }
