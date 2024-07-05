@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using project.Api.Extensions;
 using project.Core.Consts;
 using project.Core.Dto;
+using project.Core.Interfaces;
 using project.Core.Models;
 using project.Service.Contracts;
 
@@ -23,15 +25,17 @@ namespace project.Api.Controllers
         private readonly SignInManager<User> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AccountController> _logger;
+        private readonly IBaseRepository<User> _userRepository;
 
 
         public AccountController(UserManager<User> userManager, SignInManager<User> signInManager,
-          ITokenService tokenService, ILogger<AccountController> logger)
+          ITokenService tokenService, ILogger<AccountController> logger,IBaseRepository<User> userRepository)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _logger = logger;
+            _userRepository = userRepository;
         }
 
         [HttpPost("register")]
@@ -39,21 +43,29 @@ namespace project.Api.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = new User { UserName = registerDto.Email, Email = registerDto.Email, FullName = registerDto.FullName };
-                var result = await _userManager.CreateAsync(user, registerDto.Password);
-
-                if (result.Succeeded)
+                var checkUser = await _userRepository.findAllAsync(u => u.Email == registerDto.Email);
+                if (checkUser.IsNullOrEmpty())
                 {
-                    await _userManager.AddToRoleAsync(user, Role.user);
-                    _logger.LogInformation($"User : {user.UserName} registered successfully");
-                    return Ok(new { Message = "User registered successfully" });
-                }
+                    var user = registerDto.ToUser();
+                    var result = await _userManager.CreateAsync(user, registerDto.Password);
 
-                _logger.LogError($"User : {user.UserName} failed to register");
-                return BadRequest(result.Errors);
+                    if (result.Succeeded)
+                    {
+                        await _userManager.AddToRoleAsync(user, Role.user);
+                        _logger.LogInformation($"User : {user.UserName} registered successfully");
+                        return Ok(new { Message = "User registered successfully" });
+                    }
+
+                    _logger.LogError($"User : {user.UserName} failed to register");
+                    return BadRequest(result.Errors);
+                }
+                else
+                {
+                    return BadRequest($"Duplicate user : {registerDto.Email}");
+                }
             }
 
-            return BadRequest(ModelState);
+            return BadRequest(ModelState.ValidationState);
         }
 
         [HttpPost("login")]
@@ -70,13 +82,13 @@ namespace project.Api.Controllers
                     var token = _tokenService.GenerateJwtToken(appUser);
                     var roles = await _userManager.GetRolesAsync(appUser);
                     _logger.LogInformation($"User : {appUser.UserName} login successfully");
-                    return Ok(new { Email = loginDto.Email, UserName = appUser.FullName, Token = token, role = roles });
+                    return Ok(new { Email = loginDto.Email, UserName = appUser.UserName, Token = token, role = roles });
                 }
 
                 return Unauthorized(new { Message = "Invalid login attempt" });
             }
 
-            return BadRequest(ModelState);
+            return BadRequest(ModelState.ValidationState);
         }
 
 
