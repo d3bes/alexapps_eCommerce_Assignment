@@ -53,32 +53,33 @@ namespace project.Api.Controllers
         [HttpPost("AddProduct")]
         public async Task<IActionResult> AddProduct(ProductDto productDto)
         {
-            try{
-            if (ModelState.IsValid)
+            try
             {
-
-                Product product = productDto.ToProduct();
-                var checkFound = await _productRepository.findAllAsync(p => p.NameEn == product.NameEn || p.NameAr == product.NameAr);
-                if (checkFound.IsNullOrEmpty())
+                if (ModelState.IsValid)
                 {
-                    var merchant = await GetCurrentMerchant();
 
-                    product.MerchantId = merchant.Id;
-                    var result = await _productRepository.addAsync(product);
+                    Product product = productDto.ToProduct();
+                    var checkFound = await _productRepository.findAllAsync(p => p.NameEn == product.NameEn || p.NameAr == product.NameAr);
+                    if (checkFound.IsNullOrEmpty())
+                    {
+                        var merchant = await GetCurrentMerchant();
 
-                    // merchant.Products.Add(result);
-                    return Ok(result.ToMerchantProductDto());
+                        product.MerchantId = merchant.Id;
+                        var result = await _productRepository.addAsync(product);
+
+                        // merchant.Products.Add(result);
+                        return Ok(result.ToMerchantProductDto());
+                    }
+                    else
+                        return BadRequest($"Duplicate Product : {product.NameEn}");
                 }
                 else
-                    return BadRequest($"Duplicate Product : {product.NameEn}");
-            }
-            else
-                return BadRequest(ModelState.ValidationState);
+                    return BadRequest(ModelState.ValidationState);
             }
             catch (Exception ex)
             {
                 _logger.LogError(message: ex.Message);
-                return StatusCode(500, "Internal server error"); 
+                return StatusCode(500, "Internal server error");
             }
 
 
@@ -106,20 +107,30 @@ namespace project.Api.Controllers
         }
 
         [Authorize(Roles = Role.merchant)]
-        [HttpPost("Product/{productID}/Remove")]
+        [HttpDelete("Product/{productID}/Remove")]
         public async Task<IActionResult> RemoveProduct(int productID)
         {
-            Product product = _productRepository.getById(productID);
-            if (product != null)
+
+            try
             {
-                _productRepository.Delete(product);
-                _logger.LogInformation(message: $" Successfully delete product id: {product.Id} , name:{product.NameEn}\n merchantId: {product.MerchantId}\n");
-                return Ok($" Successfully delete product id: {product.Id}");
+                Product product = _productRepository.getById(productID);
+                if (product != null)
+                {
+                    _productRepository.Delete(product);
+                    _logger.LogInformation(message: $" Successfully delete product id: {product.Id} , name:{product.NameEn}\n merchantId: {product.MerchantId}\n");
+                    return Ok($" Successfully delete product :{product.NameEn} id: {product.Id}");
+                }
+                else
+                {
+                    _logger.LogError(productID, message: $"Not found product id: {product.Id}");
+                    return BadRequest($"failed to remove product {product.Id} , name:{product.NameEn} ");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogError(productID, message: $"failed to remove product");
-                return BadRequest($"failed to remove product {product.Id} , name:{product.NameEn} ");
+                _logger.LogError(ex, "An error occurred while trying to delete the product.");
+
+                return StatusCode(500, "An error occurred while trying to delete the product.");
             }
         }
 
