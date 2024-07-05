@@ -21,16 +21,28 @@ namespace project.Api.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly IBaseRepository<Merchant> _merchantRepository;
-        public AdminController(UserManager<User> userManager, IBaseRepository<Merchant> merchantRepository)
+        private readonly ILogger<AccountController> _logger;
+        public AdminController(UserManager<User> userManager, IBaseRepository<Merchant> merchantRepository,ILogger<AccountController> logger)
         {
             _userManager = userManager;
             _merchantRepository = merchantRepository;
+            _logger = logger;
+        }
+
+        [HttpGet("all/stores")]
+        public async Task<IActionResult> GetAllStores()
+        {
+            var merchants = await _merchantRepository.getAllAsync(["Products", "user"]);
+
+            return Ok(merchants.ToMerchantStoreListDto());
+
+
         }
 
         [HttpPost("CreateMerchant")]
         public async Task<IActionResult> RegisterMerchant([FromBody] RegisterMerchantDto registerMerchantDto)
         {
-            if (!registerMerchantDto.IsVatIncluded)
+            if (registerMerchantDto.IsVatIncluded)
             {
                 registerMerchantDto.VatPercentage = 0;
             }
@@ -78,15 +90,35 @@ namespace project.Api.Controllers
 
         }
 
-        [HttpGet("all/stores")]
-        public async Task<IActionResult> GetAllStores()
+        [HttpDelete("{storeID}/Remove")]
+        public async Task<IActionResult> RemoveStore(int storeID)
         {
-            var merchants = await _merchantRepository.getAllAsync(["Products", "user"]);
+            try
+            {
+                var Store = await _merchantRepository.getByIdAsync(storeID);
+                if (Store != null)
+                {
+                    _merchantRepository.Delete(Store);
+                    _logger.LogInformation(message: $" Successfully delete product id: {Store.Id} , name:{Store.StoreName}\n");
+                    return Ok($" Successfully delete Store :{Store.StoreName}");
 
-            return Ok(merchants.ToMerchantStoreListDto());
-            
-            
+                }
+                else
+                {
+                    _logger.LogError(Store.Id, message: $"Not found Store : {Store.StoreName}");
+                    return BadRequest($"failed to remove product {Store.Id} , name:{Store.StoreName} ");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while trying to delete the Store.");
+
+                return StatusCode(500, "An error occurred while trying to delete the Store.");
+            }
+
         }
+
+
 
 
 
