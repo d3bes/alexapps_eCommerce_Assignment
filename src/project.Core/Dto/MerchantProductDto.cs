@@ -21,7 +21,6 @@ namespace project.Core.Dto
         [Required]
         public string DescriptionEn { get; set; }
         [Required]
-
         [ArabicCharacters]
         public string DescriptionAr { get; set; }
         [Required]
