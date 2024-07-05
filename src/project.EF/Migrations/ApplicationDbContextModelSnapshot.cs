@@ -222,7 +222,7 @@ namespace project.EF.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<decimal>("VatPercentage")
+                    b.Property<decimal?>("VatPercentage")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -248,11 +248,7 @@ namespace project.EF.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("MerchantId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("MerchantId1")
+                    b.Property<int>("MerchantId")
                         .HasColumnType("int");
 
                     b.Property<string>("NameAr")
@@ -266,9 +262,12 @@ namespace project.EF.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("MerchantId1");
+                    b.HasIndex("MerchantId");
 
                     b.ToTable("Products", (string)null);
                 });
@@ -438,7 +437,7 @@ namespace project.EF.Migrations
                 {
                     b.HasOne("project.Core.Models.Merchant", "Merchant")
                         .WithMany("Products")
-                        .HasForeignKey("MerchantId1")
+                        .HasForeignKey("MerchantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
