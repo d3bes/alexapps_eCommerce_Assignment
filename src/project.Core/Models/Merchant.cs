@@ -13,7 +13,7 @@ namespace project.Core.Models
         public string StoreName { get; set; }
         public bool IsVatIncluded { get; set; }
         public decimal ShippingCost { get; set; }
-        public decimal VatPercentage { get; set; }
+        public decimal? VatPercentage { get; set; }
         
         public string UserId { get; set; }
         public User user { get; set; }
