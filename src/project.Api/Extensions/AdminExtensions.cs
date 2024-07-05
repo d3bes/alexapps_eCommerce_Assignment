@@ -27,7 +27,7 @@ namespace project.Api.Extensions
                 IsVatIncluded  = merchantRegisterDto.IsVatIncluded,
                 ShippingCost = merchantRegisterDto.ShippingCost,
                 StoreName = merchantRegisterDto.StoreName,
-                VatPercentage = (decimal)merchantRegisterDto.VatPercentage,
+                VatPercentage = (decimal)merchantRegisterDto.VatPercentage
                 
 
             
