@@ -9,8 +9,8 @@ namespace project.Core.Dto
     public class RegisterMerchantDto
     {
         public string Email { get; set; }
-        [Required]
-        public string PhoneNumber { get; set; }
+        // [Required]
+        // public string PhoneNumber { get; set; }
 
         [Required]
         public string StoreName { get; set; }
