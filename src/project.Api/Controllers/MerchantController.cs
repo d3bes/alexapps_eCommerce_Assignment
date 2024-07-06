@@ -96,7 +96,7 @@ namespace project.Api.Controllers
 
         }
 
-        [HttpPut("updateStore")]
+        [HttpPut("updateProduct")]
         public async Task<IActionResult> UpdateStore(ProductDto productDto)
         {
             Product product = productDto.ToProduct();
@@ -134,14 +134,48 @@ namespace project.Api.Controllers
             }
         }
 
+        [HttpPost("ToggelVat")]
+        public async Task<IActionResult> ToggleIsVatIncluded()
+        {
+            try{
+            Merchant merchant = await GetCurrentMerchant();
+            if(merchant.IsVatIncluded)
+            {
+                merchant.IsVatIncluded = false;
+                _merchantRepository.update(merchant);
+                _logger.LogInformation($"updated merchant: {merchant.Id} , IsVatIncluded: {merchant.IsVatIncluded}");
+            }
+            else
+            {
+                  merchant.IsVatIncluded = true;
+                _merchantRepository.update(merchant);
+                _logger.LogInformation($"updated merchant: {merchant.Id} , IsVatIncluded: {merchant.IsVatIncluded}");
+            }
+                var result = merchant.ToMerchantDto();
+                result.Email = merchant.user.Email;
+            return Ok(result);
+            }
+             catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while trying to Toggle vat.");
+
+                return StatusCode(500, "An error occurred while trying to Toggle vat.");
+            }
+        }
+
         private async Task<Merchant> GetCurrentMerchant()
         {
             ClaimsPrincipal currentUserClaims = this.User;
             var currentUserID = currentUserClaims.FindFirst(ClaimTypes.NameIdentifier).Value;
 
             var merchant = await _merchantRepository.findAsync(u => u.UserId == currentUserID, ["Products", "user"]);
+            if(merchant == null)
+            {
+                merchant = await _merchantRepository.getByIdAsync(currentUserID.ToString());
+            }
             return merchant;
         }
+    
 
     }
 }
