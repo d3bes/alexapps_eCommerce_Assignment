@@ -12,7 +12,8 @@ This project is a simple e-commerce API built with ASP.NET Core. It allows merch
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/d3bes/alexapps_eCommerce_Assignment.git
+   
    cd ECommerceAPI
    ```
 
