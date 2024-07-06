@@ -13,8 +13,8 @@ This project is a simple e-commerce API built with ASP.NET Core. It allows merch
 
    ```bash
    git clone https://github.com/d3bes/alexapps_eCommerce_Assignment.git
-   
-   cd ECommerceAPI
+
+   cd src/project.Api
    ```
 
 2. Update the connection string in `appsettings.json` to point to your SQL Server instance.
