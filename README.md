@@ -19,7 +19,7 @@ This project is a simple e-commerce API built with ASP.NET Core. It allows merch
 
 2. Update the connection string in `appsettings.json` to point to your SQL Server instance.
 
-3. Run the migrations to set up the database:
+3. Run the migrations on `src/project.EF/Migrations` to set up the database:
 
    ```bash
    dotnet ef database update
