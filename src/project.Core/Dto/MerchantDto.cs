@@ -11,6 +11,7 @@ namespace project.Core.Dto
         public int Id { get; set; }
         public string StoreName { get; set; }
         public bool IsVatIncluded { get; set; }
+        public string Email { get; set; }
 
         public decimal ShippingCost { get; set; }
         public decimal? VatPercentage { get; set; }
