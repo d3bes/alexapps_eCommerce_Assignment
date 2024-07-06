@@ -29,8 +29,7 @@ namespace project.Api.Extensions
                 StoreName = merchantRegisterDto.StoreName,
                 VatPercentage = (decimal)merchantRegisterDto.VatPercentage
                 
-
-            
+       
             };
         }
     }
