@@ -22,7 +22,7 @@ namespace project.Api.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IBaseRepository<Merchant> _merchantRepository;
         private readonly ILogger<AccountController> _logger;
-        public AdminController(UserManager<User> userManager, IBaseRepository<Merchant> merchantRepository,ILogger<AccountController> logger)
+        public AdminController(UserManager<User> userManager, IBaseRepository<Merchant> merchantRepository, ILogger<AccountController> logger)
         {
             _userManager = userManager;
             _merchantRepository = merchantRepository;
@@ -66,7 +66,7 @@ namespace project.Api.Controllers
                 }
             }
 
-            return BadRequest();
+                    return BadRequest($"Failed to register merchant");
         }
 
         [HttpPost("Add")]
@@ -99,6 +99,17 @@ namespace project.Api.Controllers
                 if (Store != null)
                 {
                     _merchantRepository.Delete(Store);
+                    if (Store.user == null)
+                    {
+                        var user = await _userManager.FindByIdAsync(Store.UserId);
+                        await _userManager.RemoveFromRoleAsync(user, Role.merchant);
+
+                    }
+                    else
+                    {
+                        await _userManager.RemoveFromRoleAsync(Store.user, Role.merchant);
+                    }
+
                     _logger.LogInformation(message: $" Successfully delete product id: {Store.Id} , name:{Store.StoreName}\n");
                     return Ok($" Successfully delete Store :{Store.StoreName}");
 
