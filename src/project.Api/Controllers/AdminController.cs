@@ -14,31 +14,23 @@ using project.Core.Models;
 
 namespace project.Api.Controllers
 {
-    [Authorize(Roles = Role.admin)]
     [ApiController]
     [Route("api/[controller]")]
     public class AdminController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly IBaseRepository<Merchant> _merchantRepository;
+        // private readonly IBaseRepository<Merchant> _merchantRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AccountController> _logger;
-        public AdminController(UserManager<User> userManager, IBaseRepository<Merchant> merchantRepository, ILogger<AccountController> logger)
+        public AdminController(UserManager<User> userManager, ILogger<AccountController> logger, IUnitOfWork unitOfWork) // IBaseRepository<Merchant> merchantRepository,
         {
             _userManager = userManager;
-            _merchantRepository = merchantRepository;
+            // _merchantRepository = merchantRepository;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        [HttpGet("all/stores")]
-        public async Task<IActionResult> GetAllStores()
-        {
-            var merchants = await _merchantRepository.getAllAsync(["Products", "user"]);
-
-            return Ok(merchants.ToMerchantStoreListDto());
-
-
-        }
-
+        [Authorize(Roles = Role.admin)]
         [HttpPost("CreateMerchant")]
         public async Task<IActionResult> RegisterMerchant([FromBody] RegisterMerchantDto registerMerchantDto)
         {
@@ -50,12 +42,21 @@ namespace project.Api.Controllers
             {
                 var merchant = registerMerchantDto.ToMerchant();
 
-                var user = await _userManager.FindByEmailAsync(registerMerchantDto.Email);
+                var user = await _userManager.FindByEmailAsync(registerMerchantDto.Email) ?? null;
+                if (user == null)
+                {
+                    _logger.LogInformation(message: $"can't register mercahant due to : user [{registerMerchantDto.Email}] not registered");
+                    return BadRequest($" user [ {registerMerchantDto.Email} ] not registered");
+                }
                 merchant.UserId = user.Id;
-                bool checkMerchant = await _merchantRepository.foundAsync(m => m.UserId == user.Id);
+                // bool checkMerchant = await _merchantRepository.foundAsync(m => m.UserId == user.Id);
+                bool checkMerchant = await _unitOfWork.merchants.foundAsync(m => m.UserId == user.Id);
+
                 if (!checkMerchant)
                 {
-                    await _merchantRepository.addAsync(merchant);
+                    // await _merchantRepository.addAsync(merchant);
+                    await _unitOfWork.merchants.addAsync(merchant);
+                    _unitOfWork.Complete();
                     await _userManager.AddToRoleAsync(user, Role.merchant);
                     return Ok(new { Message = "merchant registered successfully" });
                 }
@@ -66,9 +67,10 @@ namespace project.Api.Controllers
                 }
             }
 
-                    return BadRequest($"Failed to register merchant");
+            return BadRequest($"Failed to register merchant");
         }
 
+        [Authorize(Roles = Role.admin)]
         [HttpPost("Add")]
         public async Task<IActionResult> AddAdmin(RegisterDto registerDto)
         {
@@ -90,15 +92,21 @@ namespace project.Api.Controllers
 
         }
 
+        [Authorize(Roles = Role.admin)]
         [HttpDelete("{storeID}/Remove")]
         public async Task<IActionResult> RemoveStore(int storeID)
         {
             try
             {
-                var Store = await _merchantRepository.getByIdAsync(storeID);
+                // var Store = await _merchantRepository.getByIdAsync(storeID);
+                var Store = await _unitOfWork.merchants.getByIdAsync(storeID);
+
                 if (Store != null)
                 {
-                    _merchantRepository.Delete(Store);
+                    // _merchantRepository.Delete(Store);
+                    _unitOfWork.merchants.Delete(Store);
+                    _unitOfWork.Complete();
+
                     if (Store.user == null)
                     {
                         var user = await _userManager.FindByIdAsync(Store.UserId);
