@@ -10,6 +10,7 @@ using project.Core.Models;
 using project.EF.Repository;
 using project.Core.Interfaces;
 using System.Security.Claims;
+using project.Api.Extensions;
 
 namespace project.Api.Controllers
 {
@@ -26,19 +27,32 @@ namespace project.Api.Controllers
         //   "email": "admin@example.com",
         //   "password": "Admin_pwd_12345"
         // }
-        private readonly IBaseRepository<Product> _productRepository;
-        private readonly IBaseRepository<Cart> _cartRepository;
-        private readonly IBaseRepository<CartItem> _cartItemRepository;
-        private readonly IBaseRepository<Merchant> _merchantRepository;
+        // private readonly IBaseRepository<Product> _productRepository;
+        // private readonly IBaseRepository<Cart> _cartRepository;
+        // private readonly IBaseRepository<CartItem> _cartItemRepository;
+        // private readonly IBaseRepository<Merchant> _merchantRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<UserController> _logger;
-        public UserController(IBaseRepository<Product> productRepository, IBaseRepository<Cart> cartRepository,
-         IBaseRepository<CartItem> cartItemRepository, IBaseRepository<Merchant> merchantRepository, ILogger<UserController> logger)
+        public UserController(ILogger<UserController> logger, IUnitOfWork unitOfWork)//IBaseRepository<Product> productRepository, IBaseRepository<Cart> cartRepository,IBaseRepository<CartItem> cartItemRepository, IBaseRepository<Merchant> merchantRepository
         {
-            _productRepository = productRepository;
-            _cartItemRepository = cartItemRepository;
-            _cartRepository = cartRepository;
-            _merchantRepository = merchantRepository;
-            _logger= logger;
+            // _productRepository = productRepository;
+            // _cartItemRepository = cartItemRepository;
+            // _cartRepository = cartRepository;
+            // _merchantRepository = merchantRepository;
+            _unitOfWork = unitOfWork;
+            _logger = logger;
+
+        }
+
+        
+
+        [HttpGet("all/stores")]
+        public async Task<IActionResult> GetAllStores()
+        {
+            // var merchants = await _merchantRepository.getAllAsync(["Products", "user"]);
+            var merchants = await _unitOfWork.merchants.getAllAsync(["Products", "user"]);
+            return Ok(merchants.ToMerchantStoreListDto());
+
 
         }
 
@@ -49,7 +63,8 @@ namespace project.Api.Controllers
             if (ModelState.IsValid)
             {
                 // var product = await _productRepository.getByIdAsync(addToCartDto.ProductId);
-                var product = await _productRepository.findAsync(p => p.Id == addToCartDto.ProductId, ["Merchant"]);
+                // var product = await _productRepository.findAsync(p => p.Id == addToCartDto.ProductId, ["Merchant"]);
+                var product = await _unitOfWork.products.findAsync(p => p.Id == addToCartDto.ProductId, ["Merchant"]);
 
                 if (product == null)
                 {
@@ -57,11 +72,15 @@ namespace project.Api.Controllers
                 }
 
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var cart = await _cartRepository.findAsync(c => c.UserId == currentUserId, ["Items", "User"]);
+                // var cart = await _cartRepository.findAsync(c => c.UserId == currentUserId, ["Items", "User"]);
+                var cart = await _unitOfWork.carts.findAsync(c => c.UserId == currentUserId, ["Items", "User"]);
+
                 if (cart == null)
                 {
                     cart = new Cart { UserId = currentUserId, Items = new List<CartItem>() };
-                    await _cartRepository.addAsync(cart);
+                    // await _cartRepository.addAsync(cart);
+                    await _unitOfWork.carts.addAsync(cart);
+                    _unitOfWork.Complete();
                 }
 
                 var cartItem = new CartItem()
@@ -72,8 +91,9 @@ namespace project.Api.Controllers
                 };
 
                 cart.Items.Add(cartItem);
-                await _cartItemRepository.addAsync(cartItem);
-
+                // await _cartItemRepository.addAsync(cartItem);
+                await _unitOfWork.cartItems.addAsync(cartItem);
+                _unitOfWork.Complete();
 
                 return Ok(new { Message = "Product added to cart successfully" });
             }
@@ -85,7 +105,9 @@ namespace project.Api.Controllers
         public async Task<IActionResult> GetCart()
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var cart = await _cartRepository.findAsync(c => c.UserId == currentUserId, ["Items.Product"]);
+            // var cart = await _cartRepository.findAsync(c => c.UserId == currentUserId, ["Items.Product"]);
+            var cart = await _unitOfWork.carts.findAsync(c => c.UserId == currentUserId, ["Items.Product"]);
+
             if (cart == null)
             {
                 return NotFound("Cart not found");
@@ -95,7 +117,9 @@ namespace project.Api.Controllers
             {
                 var product = item.Product;
                 decimal productPrice = product.Price;
-                var merchant = _merchantRepository.getById(product.MerchantId);
+                // var merchant = _merchantRepository.getById(product.MerchantId);
+                var merchant = _unitOfWork.merchants.getById(product.MerchantId);
+
                 //if vat is Included on product 
                 decimal Vat = productPrice * (merchant.VatPercentage ?? 0) / 100;
                 if (!merchant.IsVatIncluded)
@@ -123,7 +147,7 @@ namespace project.Api.Controllers
                     Price = item.Product.Price,
                     TotalPrice = item.Product.Price * item.Quantity
                 }),
-                
+
                 Vat = ItemsVat,
                 ShippingCost = shippingCost,
                 CartTotal = cartTotal
@@ -135,14 +159,18 @@ namespace project.Api.Controllers
         {
             try
             {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var cart = await _cartRepository.findAsync(c => c.UserId == currentUserId, ["Items.Product"]);
-            var cartItem = await _cartItemRepository.findAsync(c=> c.CartId ==cart.Id && c.ProductId == productID);
-             _cartItemRepository.Delete(cartItem);
-             _logger.LogInformation(message: $"CartItem Id : {cartItem.Id} deleted successfully");
-             return Ok();
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                // var cart = await _cartRepository.findAsync(c => c.UserId == currentUserId, ["Items.Product"]);
+                // var cartItem = await _cartItemRepository.findAsync(c => c.CartId == cart.Id && c.ProductId == productID);
+                // _cartItemRepository.Delete(cartItem);
+                 var cart = await _unitOfWork.carts.findAsync(c => c.UserId == currentUserId, ["Items.Product"]);
+                var cartItem = await _unitOfWork.cartItems.findAsync(c => c.CartId == cart.Id && c.ProductId == productID);
+                _unitOfWork.cartItems.Delete(cartItem);
+                _unitOfWork.Complete();
+                _logger.LogInformation(message: $"CartItem Id : {cartItem.Id} deleted successfully");
+                return Ok();
             }
-             catch (Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, $"An error occurred while trying to delete CartItem.");
 
