@@ -35,7 +35,7 @@ namespace project.EF.Repository
         public TEntity Add(TEntity entity)
         {
             _applicationDbContext.Set<TEntity>().Add(entity);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
             return entity;
         }
 
@@ -194,14 +194,14 @@ namespace project.EF.Repository
         public TEntity add(TEntity entity)
         {
             _applicationDbContext.Set<TEntity>().Add(entity);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
             return entity;
         }
 
         public IEnumerable<TEntity> addRange(IEnumerable<TEntity> entities)
         {
             _applicationDbContext.Set<TEntity>().AddRange(entities);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
             return entities.ToList();
 
         }
@@ -209,18 +209,18 @@ namespace project.EF.Repository
         public TEntity update(TEntity entity)
         {
             _applicationDbContext.Set<TEntity>().Update(entity);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
             return entity;
         }
         public void Delete(TEntity entity)
         {
             _applicationDbContext.Set<TEntity>().Remove(entity);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
         }
         public void DeleteRange(IEnumerable<TEntity> entities)
         {
             _applicationDbContext.Set<TEntity>().RemoveRange(entities);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
         }
 
 
@@ -265,7 +265,7 @@ namespace project.EF.Repository
         public async Task<TEntity> AddAsync(TEntity entity)
         {
             await _applicationDbContext.Set<TEntity>().AddAsync(entity);
-            _applicationDbContext.SaveChanges();
+            // _applicationDbContext.SaveChanges();
             return entity;
         }
 
@@ -401,14 +401,14 @@ namespace project.EF.Repository
         public async Task<TEntity> addAsync(TEntity entity)
         {
             await _applicationDbContext.Set<TEntity>().AddAsync(entity);
-            await _applicationDbContext.SaveChangesAsync();
+            // await _applicationDbContext.SaveChangesAsync();
             return entity;
         }
 
         public async Task<IEnumerable<TEntity>> addRangeAsync(IEnumerable<TEntity> entities)
         {
             await _applicationDbContext.Set<TEntity>().AddRangeAsync(entities);
-            await _applicationDbContext.SaveChangesAsync();
+            // await _applicationDbContext.SaveChangesAsync();
             return entities.ToList();
 
         }
