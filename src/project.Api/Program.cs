@@ -64,7 +64,8 @@ builder.Services.AddIdentity<User, IdentityRole>()
 //     .AddDefaultTokenProviders();
 
 builder.Services.AddTransient(typeof(ITokenService), typeof(TokenService));
-builder.Services.AddTransient(typeof(IBaseRepository<>), typeof(BaseRepository<>));
+// builder.Services.AddTransient(typeof(IBaseRepository<>), typeof(BaseRepository<>));
+builder.Services.AddTransient<IUnitOfWork,UnitOfWork>();
 
 
 builder.Services.AddControllers();
