@@ -25,17 +25,19 @@ namespace project.Api.Controllers
         private readonly SignInManager<User> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AccountController> _logger;
-        private readonly IBaseRepository<User> _userRepository;
+        // private readonly IBaseRepository<User> _userRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
 
         public AccountController(UserManager<User> userManager, SignInManager<User> signInManager,
-          ITokenService tokenService, ILogger<AccountController> logger,IBaseRepository<User> userRepository)
+         ITokenService tokenService, ILogger<AccountController> logger, IUnitOfWork unitOfWork) //IBaseRepository<User> userRepository)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _logger = logger;
-            _userRepository = userRepository;
+            // _userRepository = userRepository;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpPost("register")]
@@ -43,7 +45,9 @@ namespace project.Api.Controllers
         {
             if (ModelState.IsValid)
             {
-                var checkUser = await _userRepository.findAllAsync(u => u.Email == registerDto.Email);
+                // var checkUser = await _userRepository.findAllAsync(u => u.Email == registerDto.Email);
+                var checkUser = await _unitOfWork.users.findAllAsync(u => u.Email == registerDto.Email);
+
                 if (checkUser.IsNullOrEmpty())
                 {
                     var user = registerDto.ToUser();
