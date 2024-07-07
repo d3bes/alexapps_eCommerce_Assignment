@@ -21,15 +21,17 @@ namespace project.Api.Controllers
     [Route("api/[controller]")]
     public class MerchantController : ControllerBase
     {
-        private readonly IBaseRepository<Merchant> _merchantRepository;
-        private readonly IBaseRepository<Product> _productRepository;
+        // private readonly IBaseRepository<Merchant> _merchantRepository;
+        // private readonly IBaseRepository<Product> _productRepository;
         private readonly ILogger<MerchantController> _logger;
         private readonly UserManager<User> _userManager;
-        public MerchantController(IBaseRepository<Merchant> merchantRepository, IBaseRepository<Product> productRepository,
-         UserManager<User> userManager, ILogger<MerchantController> logger)
+        private readonly IUnitOfWork _unitOfWork;
+        public MerchantController(IUnitOfWork unitOfWork, UserManager<User> userManager, ILogger<MerchantController> logger)//IBaseRepository<Merchant> merchantRepository, IBaseRepository<Product> productRepository,
+
         {
-            _merchantRepository = merchantRepository;
-            _productRepository = productRepository;
+            // _merchantRepository = merchantRepository;
+            // _productRepository = productRepository;
+            _unitOfWork = unitOfWork;
             _userManager = userManager;
             _logger = logger;
         }
@@ -59,14 +61,17 @@ namespace project.Api.Controllers
                 {
 
                     Product product = productDto.ToProduct();
-                    var checkFound = await _productRepository.findAllAsync(p => p.NameEn == product.NameEn || p.NameAr == product.NameAr);
+                    // var checkFound = await _productRepository.findAllAsync(p => p.NameEn == product.NameEn || p.NameAr == product.NameAr);
+                    var checkFound = await _unitOfWork.products.findAllAsync(p => p.NameEn == product.NameEn || p.NameAr == product.NameAr);
+
                     if (checkFound.IsNullOrEmpty())
                     {
                         var merchant = await GetCurrentMerchant();
 
                         product.MerchantId = merchant.Id;
-                        var result = await _productRepository.addAsync(product);
-
+                        // var result = await _productRepository.addAsync(product);
+                        var result = await _unitOfWork.products.addAsync(product);
+                        _unitOfWork.Complete();
                         // merchant.Products.Add(result);
                         return Ok(result.ToMerchantProductDto());
                     }
@@ -100,8 +105,9 @@ namespace project.Api.Controllers
         public async Task<IActionResult> UpdateStore(ProductDto productDto)
         {
             Product product = productDto.ToProduct();
-            var result = _productRepository.update(product);
-
+            // var result = _productRepository.update(product);
+            var result = _unitOfWork.products.update(product);
+            _unitOfWork.Complete();
             return Ok(result);
 
         }
@@ -113,10 +119,13 @@ namespace project.Api.Controllers
 
             try
             {
-                Product product = _productRepository.getById(productID);
+                // Product product = _productRepository.getById(productID);
+                Product product = _unitOfWork.products.getById(productID);
                 if (product != null)
                 {
-                    _productRepository.Delete(product);
+                    // _productRepository.Delete(product);
+                    _unitOfWork.products.Delete(product);
+                    _unitOfWork.Complete();
                     _logger.LogInformation(message: $" Successfully delete product id: {product.Id} , name:{product.NameEn}\n merchantId: {product.MerchantId}\n");
                     return Ok($" Successfully delete product :{product.NameEn} id: {product.Id}");
                 }
@@ -135,27 +144,41 @@ namespace project.Api.Controllers
         }
 
         [HttpPost("ToggelVat")]
-        public async Task<IActionResult> ToggleIsVatIncluded()
+        public async Task<IActionResult> ToggleIsVatIncluded([FromBody] ToggleIsVatIncludedDto toggleIsVatIncludedDto)
         {
-            try{
-            Merchant merchant = await GetCurrentMerchant();
-            if(merchant.IsVatIncluded)
+            try
             {
-                merchant.IsVatIncluded = false;
-                _merchantRepository.update(merchant);
-                _logger.LogInformation($"updated merchant: {merchant.Id} , IsVatIncluded: {merchant.IsVatIncluded}");
-            }
-            else
-            {
-                  merchant.IsVatIncluded = true;
-                _merchantRepository.update(merchant);
-                _logger.LogInformation($"updated merchant: {merchant.Id} , IsVatIncluded: {merchant.IsVatIncluded}");
-            }
+                Merchant merchant = await GetCurrentMerchant();
+                if (merchant.IsVatIncluded)
+                {
+                    if (toggleIsVatIncludedDto.VatPercentage != 0)
+                    {
+                        merchant.IsVatIncluded = false;
+                        merchant.VatPercentage = toggleIsVatIncludedDto.VatPercentage;
+                        // _merchantRepository.update(merchant);
+                        _unitOfWork.merchants.update(merchant);
+                        _unitOfWork.Complete();
+                        _logger.LogInformation($"updated merchant: {merchant.Id} , IsVatIncluded: {merchant.IsVatIncluded}");
+                    }
+                    else
+                    {
+                        return BadRequest("vatPercentage must be have a value");
+                    }
+                }
+                else
+                {
+                    merchant.IsVatIncluded = true;
+                    merchant.VatPercentage = 0;
+                    // _merchantRepository.update(merchant);
+                    _unitOfWork.merchants.update(merchant);
+                    _unitOfWork.Complete();
+                    _logger.LogInformation($"updated merchant: {merchant.Id} , IsVatIncluded: {merchant.IsVatIncluded}");
+                }
                 var result = merchant.ToMerchantDto();
                 result.Email = merchant.user.Email;
-            return Ok(result);
+                return Ok(result);
             }
-             catch (Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while trying to Toggle vat.");
 
@@ -163,19 +186,46 @@ namespace project.Api.Controllers
             }
         }
 
+
+        [HttpPost("SetShipingCost")]
+        public async Task<IActionResult> SetShipingCost(decimal shippingCost)
+        {
+            try
+            {
+                Merchant merchant = await GetCurrentMerchant();
+                merchant.ShippingCost = shippingCost;
+              var result =  _unitOfWork.merchants.update(merchant);
+                _unitOfWork.Complete();
+
+                return Ok(result.ToMerchantDto());
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while trying set shiping cost.");
+
+                return StatusCode(500, "An error occurred while trying set shiping cost.");
+            }
+        }
+
+
         private async Task<Merchant> GetCurrentMerchant()
         {
             ClaimsPrincipal currentUserClaims = this.User;
             var currentUserID = currentUserClaims.FindFirst(ClaimTypes.NameIdentifier).Value;
 
-            var merchant = await _merchantRepository.findAsync(u => u.UserId == currentUserID, ["Products", "user"]);
-            if(merchant == null)
+            // var merchant = await _merchantRepository.findAsync(u => u.UserId == currentUserID, ["Products", "user"]);
+            var merchant = await _unitOfWork.merchants.findAsync(u => u.UserId == currentUserID, ["Products", "user"]);
+
+            if (merchant == null)
             {
-                merchant = await _merchantRepository.getByIdAsync(currentUserID.ToString());
+                // merchant = await _merchantRepository.getByIdAsync(currentUserID.ToString());
+                merchant = await _unitOfWork.merchants.getByIdAsync(currentUserID.ToString());
+
             }
             return merchant;
         }
-    
+
 
     }
 }
